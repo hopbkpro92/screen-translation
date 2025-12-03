@@ -23,7 +23,6 @@ class ConfigManager:
         
         # Default configuration
         return {
-            "ocr_language": "eng",
             "target_language": "es",
             "translation_backend": "ollama",
             "google_api_key": "",

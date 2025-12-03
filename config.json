@@ -1,6 +1,5 @@
 {
-  "ocr_language": "eng",
-  "target_language": "es",
+  "target_language": "en",
   "translation_backend": "ollama",
   "google_api_key": "",
   "ollama_url": "http://localhost:11434",

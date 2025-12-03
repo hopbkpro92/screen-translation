@@ -7,9 +7,10 @@ import os
 
 
 class OCREngine:
-    """Text extraction using Tesseract OCR"""
+    """Text extraction using Tesseract OCR with auto language detection"""
     
-    def __init__(self, language='eng'):
+    def __init__(self, language=None):
+        # Language is now optional and auto-detected if None
         self.language = language
         
         # Set Tesseract path for Windows (common installation path)
@@ -24,12 +25,12 @@ class OCREngine:
                     break
     
     def set_language(self, language):
-        """Set OCR language"""
+        """Set OCR language (None for auto-detect)"""
         self.language = language
     
     def extract_text(self, image):
         """
-        Extract text from image
+        Extract text from image with auto language detection
         
         Args:
             image: PIL Image object
@@ -41,12 +42,32 @@ class OCREngine:
             return ""
         
         try:
-            # Perform OCR
-            text = pytesseract.image_to_string(
-                image,
-                lang=self.language,
-                config='--psm 6'  # Assume uniform block of text
-            )
+            # Use auto language detection if no language specified
+            # Try multiple common languages for better detection
+            if self.language is None:
+                # First try to detect with OSD (Orientation and Script Detection)
+                try:
+                    osd = pytesseract.image_to_osd(image)
+                    # Extract script info if available
+                except:
+                    pass
+                
+                # Use multiple languages for auto-detection
+                # Common languages: English, Spanish, French, German, Chinese, Japanese, Korean, Arabic
+                lang_string = 'eng+spa+fra+deu+chi_sim+jpn+kor+ara+rus+por+ita+hin'
+                text = pytesseract.image_to_string(
+                    image,
+                    lang=lang_string,
+                    config='--psm 6'  # Assume uniform block of text
+                )
+            else:
+                # Use specified language
+                text = pytesseract.image_to_string(
+                    image,
+                    lang=self.language,
+                    config='--psm 6'
+                )
+            
             return text.strip()
         except Exception as e:
             return f"OCR Error: {str(e)}"

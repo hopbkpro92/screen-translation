@@ -7,7 +7,6 @@ A desktop application that allows you to capture text from any area of your scre
 - **Drag & Drop Selection**: Select any area on your screen to capture text
 - **OCR Text Extraction**: Uses Tesseract OCR to extract text from screenshots
 - **Multiple Translation Options**:
-  - OpenAI API (GPT models)
   - Google Translate API
   - Ollama (offline, local models like Gemma)
 - **Configurable Settings**: Choose OCR language, target language, and translation backend
@@ -23,6 +22,10 @@ A desktop application that allows you to capture text from any area of your scre
 
 1. Install Tesseract OCR:
    - Download from: https://github.com/UB-Mannheim/tesseract/wiki
+   - Download additional language packs from: https://github.com/tesseract-ocr/tessdata
+     - Some common language packs: jpn.traineddata, jpn_vert.traineddata, fra.traineddata
+     - Save these language packs to tessdata folder (default: C:\Program Files\Tesseract-OCR\tessdata)
+     - Verify by running tesseract --list-langs in Command Prompt to confirm
    - Add to PATH or update path in code
 
 2. (Optional) Install Ollama:
@@ -50,9 +53,8 @@ python main.py
 ## Configuration
 
 Edit `config.json` or use the Settings tab:
-- `ocr_language`: Tesseract language code (e.g., "eng", "spa", "chi_sim")
 - `target_language`: Translation target (e.g., "es", "en", "zh")
-- `translation_backend`: "openai", "google", or "ollama"
+- `translation_backend`: "google", or "ollama"
 - API keys and model configurations
 
 ## License

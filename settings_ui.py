@@ -74,31 +74,6 @@ class SettingsWidget(QWidget):
         """Initialize UI components"""
         layout = QVBoxLayout()
         
-        # OCR Settings
-        ocr_group = QGroupBox("OCR Settings")
-        ocr_layout = QFormLayout()
-        
-        self.ocr_lang_combo = QComboBox()
-        self.ocr_lang_combo.addItems([
-            'eng (English)',
-            'spa (Spanish)',
-            'fra (French)',
-            'deu (German)',
-            'ita (Italian)',
-            'por (Portuguese)',
-            'rus (Russian)',
-            'jpn (Japanese)',
-            'kor (Korean)',
-            'chi_sim (Chinese Simplified)',
-            'chi_tra (Chinese Traditional)',
-            'ara (Arabic)',
-            'hin (Hindi)'
-        ])
-        ocr_layout.addRow("OCR Language:", self.ocr_lang_combo)
-        
-        ocr_group.setLayout(ocr_layout)
-        layout.addWidget(ocr_group)
-        
         # Translation Settings
         trans_group = QGroupBox("Translation Settings")
         trans_layout = QFormLayout()
@@ -200,13 +175,6 @@ class SettingsWidget(QWidget):
         """Load settings from config"""
         config = self.config_manager.config
         
-        # OCR
-        ocr_lang = config.get('ocr_language', 'eng')
-        for i in range(self.ocr_lang_combo.count()):
-            if self.ocr_lang_combo.itemText(i).startswith(ocr_lang):
-                self.ocr_lang_combo.setCurrentIndex(i)
-                break
-        
         # Target language
         target_lang = config.get('target_language', 'es')
         for i in range(self.target_lang_combo.count()):
@@ -236,12 +204,10 @@ class SettingsWidget(QWidget):
     
     def save_settings(self):
         """Save settings to config"""
-        # Extract language codes from combo box text
-        ocr_lang = self.ocr_lang_combo.currentText().split(' ')[0]
+        # Extract language code from combo box text
         target_lang = self.target_lang_combo.currentText().split(' ')[0]
         
         updates = {
-            'ocr_language': ocr_lang,
             'target_language': target_lang,
             'translation_backend': self.backend_combo.currentText(),
             'ollama_url': self.ollama_url_input.text(),

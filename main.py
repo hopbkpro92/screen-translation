@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
         
         # Initialize components
         self.config_manager = ConfigManager()
-        self.ocr_engine = OCREngine(self.config_manager.get('ocr_language', 'eng'))
+        self.ocr_engine = OCREngine()  # Auto-detect language
         self.translation_engine = TranslationEngine(self.config_manager.config)
         self.screen_selector = ScreenSelector()
         
@@ -245,7 +245,7 @@ class MainWindow(QMainWindow):
         self.status_label.setStyleSheet("font-weight: bold; color: #2196F3;")
         
         # Update engines with latest config
-        self.ocr_engine.set_language(self.config_manager.get('ocr_language', 'eng'))
+        # OCR now uses auto-detection, no need to set language
         self.translation_engine.config = self.config_manager.config
         self.translation_engine.backend = self.config_manager.get('translation_backend', 'ollama')
         
