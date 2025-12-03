@@ -1,0 +1,10 @@
+{
+  "ocr_language": "eng",
+  "target_language": "es",
+  "translation_backend": "ollama",
+  "google_api_key": "",
+  "ollama_url": "http://localhost:11434",
+  "ollama_model": "llama3:8b",
+  "window_opacity": 0.9,
+  "result_font_size": 14
+}
