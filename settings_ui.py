@@ -3,8 +3,61 @@ Settings UI for configuration
 """
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                               QLineEdit, QComboBox, QPushButton, QGroupBox,
-                              QSpinBox, QMessageBox, QFormLayout)
-from PyQt6.QtCore import Qt
+                              QSpinBox, QMessageBox, QFormLayout, QApplication)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+
+
+class OllamaTestThread(QThread):
+    """Background thread for testing Ollama connection"""
+    finished = pyqtSignal(bool, str, list)  # success, message, model_names
+    
+    def __init__(self, url, model):
+        super().__init__()
+        self.url = url
+        self.model = model
+    
+    def run(self):
+        """Run the test in background"""
+        import requests
+        
+        try:
+            # Test connection
+            response = requests.get(f"{self.url}/api/tags", timeout=5)
+            if response.status_code != 200:
+                self.finished.emit(False, f"HTTP {response.status_code}", [])
+                return
+            
+            # Check if model exists
+            models = response.json().get('models', [])
+            model_names = [m['name'] for m in models]
+            
+            model_exists = any(self.model in name or name in self.model for name in model_names)
+            
+            if not model_exists:
+                msg = f"Model '{self.model}' is not installed.\n\nAvailable models:\n" + "\n".join(model_names) + f"\n\nTo install:\nollama pull {self.model}"
+                self.finished.emit(False, msg, model_names)
+                return
+            
+            # Test the model with a simple query
+            test_response = requests.post(
+                f"{self.url}/api/generate",
+                json={
+                    "model": self.model,
+                    "prompt": "Hello",
+                    "stream": False
+                },
+                timeout=30
+            )
+            
+            if test_response.status_code == 200:
+                msg = f"✓ Connection to Ollama: OK\n✓ Model '{self.model}': Available and Working\n\nAll models:\n" + "\n".join(model_names)
+                self.finished.emit(True, msg, model_names)
+            else:
+                msg = f"Model '{self.model}' exists but failed to respond.\nHTTP {test_response.status_code}"
+                self.finished.emit(False, msg, model_names)
+                
+        except Exception as e:
+            self.finished.emit(False, f"Cannot connect to Ollama at {self.url}\n\nError: {str(e)}\n\nMake sure Ollama is running.", [])
 
 
 class SettingsWidget(QWidget):
@@ -13,6 +66,7 @@ class SettingsWidget(QWidget):
     def __init__(self, config_manager):
         super().__init__()
         self.config_manager = config_manager
+        self.test_thread = None
         self.init_ui()
         self.load_settings()
     
@@ -254,9 +308,7 @@ class SettingsWidget(QWidget):
         pass
     
     def test_ollama_connection(self):
-        """Test Ollama connection and model availability"""
-        import requests
-        
+        """Test Ollama connection and model availability (in background thread)"""
         url = self.ollama_url_input.text() or "http://localhost:11434"
         model = self.ollama_model_combo.currentText()
         
@@ -268,52 +320,32 @@ class SettingsWidget(QWidget):
             )
             return
         
-        try:
-            # Test connection
-            response = requests.get(f"{url}/api/tags", timeout=5)
-            if response.status_code != 200:
-                QMessageBox.warning(self, "Connection Failed", f"HTTP {response.status_code}")
-                return
-            
-            # Check if model exists
-            models = response.json().get('models', [])
-            model_names = [m['name'] for m in models]
-            
-            model_exists = any(model in name or name in model for name in model_names)
-            
-            if model_exists:
-                # Test the model with a simple query
-                test_response = requests.post(
-                    f"{url}/api/generate",
-                    json={
-                        "model": model,
-                        "prompt": "Hello",
-                        "stream": False
-                    },
-                    timeout=30
-                )
-                
-                if test_response.status_code == 200:
-                    QMessageBox.information(
-                        self,
-                        "Test Successful",
-                        f"✓ Connection to Ollama: OK\n✓ Model '{model}': Available and Working\n\nAll models:\n" + "\n".join(model_names)
-                    )
-                else:
-                    QMessageBox.warning(
-                        self,
-                        "Model Test Failed",
-                        f"Model '{model}' exists but failed to respond.\nHTTP {test_response.status_code}"
-                    )
-            else:
-                QMessageBox.warning(
-                    self,
-                    "Model Not Found",
-                    f"Model '{model}' is not installed.\n\nAvailable models:\n" + "\n".join(model_names) + "\n\nTo install:\nollama pull {model}"
-                )
-        except Exception as e:
-            QMessageBox.warning(
-                self,
-                "Connection Failed",
-                f"Cannot connect to Ollama at {url}\n\nError: {str(e)}\n\nMake sure Ollama is running."
-            )
+        # Disable button during test
+        test_btn = self.sender()
+        if test_btn:
+            test_btn.setEnabled(False)
+            test_btn.setText("Testing...")
+        
+        # Show cursor as busy
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        
+        # Start background thread
+        self.test_thread = OllamaTestThread(url, model)
+        self.test_thread.finished.connect(lambda success, msg, models: self._on_test_complete(success, msg, models, test_btn))
+        self.test_thread.start()
+    
+    def _on_test_complete(self, success, message, model_names, test_btn):
+        """Handle test completion"""
+        # Restore cursor
+        QApplication.restoreOverrideCursor()
+        
+        # Re-enable button
+        if test_btn:
+            test_btn.setEnabled(True)
+            test_btn.setText("Test Connection & Model")
+        
+        # Show result
+        if success:
+            QMessageBox.information(self, "Test Successful", message)
+        else:
+            QMessageBox.warning(self, "Test Failed", message)
