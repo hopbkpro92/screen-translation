@@ -18,6 +18,7 @@ class ScreenSelector(QWidget):
         self.is_capturing = False
         self.screenshot = None
         self.selected_area = None
+        self.device_pixel_ratio = 1.0
         
         # Setup window
         self.setWindowFlags(
@@ -37,8 +38,12 @@ class ScreenSelector(QWidget):
         # Capture full screen using PyQt6 method
         screen = QApplication.primaryScreen()
         
-        # Get the window ID of the root window (desktop)
-        # In Windows, 0 represents the entire screen
+        # Get device pixel ratio for DPI scaling
+        # This is critical for matching mouse coordinates to screenshot pixels
+        self.device_pixel_ratio = screen.devicePixelRatio()
+        
+        # Capture the entire screen
+        # Use grabWindow with desktop window ID
         self.screenshot = screen.grabWindow(0)
         
         # Reset state
@@ -96,12 +101,21 @@ class ScreenSelector(QWidget):
             self.is_capturing = False
             self.end = event.pos()
             
-            # Get selected rectangle
+            # Get selected rectangle in logical coordinates
             rect = QRect(self.begin, self.end).normalized()
             
             if rect.width() > 10 and rect.height() > 10:
-                # Crop screenshot to selected area
-                self.selected_area = self.screenshot.copy(rect)
+                # Convert logical coordinates to physical pixels
+                # This is crucial for high DPI displays
+                physical_rect = QRect(
+                    int(rect.x() * self.device_pixel_ratio),
+                    int(rect.y() * self.device_pixel_ratio),
+                    int(rect.width() * self.device_pixel_ratio),
+                    int(rect.height() * self.device_pixel_ratio)
+                )
+                
+                # Crop screenshot to selected area using physical coordinates
+                self.selected_area = self.screenshot.copy(physical_rect)
                 
             self.hide()
             
@@ -117,6 +131,10 @@ class ScreenSelector(QWidget):
         if self.selected_area is None:
             return None
             
+        # Get device pixel ratio for proper scaling
+        # This ensures correct image resolution on high DPI displays
+        pixel_ratio = self.selected_area.devicePixelRatio()
+        
         # Convert QPixmap to QImage
         qimage = self.selected_area.toImage()
         
@@ -131,5 +149,10 @@ class ScreenSelector(QWidget):
         
         # Convert to PIL Image
         image = Image.open(io.BytesIO(image_data))
+        
+        # If the device has a pixel ratio != 1, the actual image size might differ
+        # Store the pixel ratio for reference if needed
+        if pixel_ratio != 1.0:
+            image.info['dpi'] = (96 * pixel_ratio, 96 * pixel_ratio)
         
         return image
