@@ -127,7 +127,7 @@ class SettingsWidget(QWidget):
         ollama_layout.addRow("Model:", model_layout)
         
         # Test connection button
-        test_btn = QPushButton("Test Connection & Model")
+        test_btn = QPushButton("Test connection")
         test_btn.clicked.connect(self.test_ollama_connection)
         ollama_layout.addRow("", test_btn)
         
@@ -141,6 +141,8 @@ class SettingsWidget(QWidget):
         self.font_size_spin = QSpinBox()
         self.font_size_spin.setRange(8, 32)
         self.font_size_spin.setValue(14)
+        # Prevent spin box from stealing focus after dialogs close
+        self.font_size_spin.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         display_layout.addRow("Result Font Size:", self.font_size_spin)
         
         display_group.setLayout(display_layout)
@@ -308,7 +310,7 @@ class SettingsWidget(QWidget):
         # Re-enable button
         if test_btn:
             test_btn.setEnabled(True)
-            test_btn.setText("Test Connection & Model")
+            test_btn.setText("Test connection")
         
         # Show result
         if success:
