@@ -1,5 +1,5 @@
 """
-Translation module with multiple backends
+Translation module with multiple backends and auto source language detection
 """
 import requests
 import json
@@ -7,7 +7,7 @@ from typing import Optional
 
 
 class TranslationEngine:
-    """Handle translation with multiple backends"""
+    """Handle translation with multiple backends and auto language detection"""
     
     def __init__(self, config):
         self.config = config
@@ -19,7 +19,7 @@ class TranslationEngine:
         
     def translate(self, text, target_lang=None):
         """
-        Translate text using configured backend
+        Translate text using configured backend with auto source language detection
         
         Args:
             text: Text to translate
@@ -31,7 +31,7 @@ class TranslationEngine:
         if not text or not text.strip():
             return ""
         
-        target_lang = target_lang or self.config.get('target_language', 'es')
+        target_lang = target_lang or self.config.get('target_language', 'en')
         
         try:
             if self.backend == 'google':
@@ -44,17 +44,18 @@ class TranslationEngine:
             return f"Translation Error: {str(e)}"
     
     def _translate_google(self, text, target_lang):
-        """Translate using Google Translate (free googletrans library)"""
+        """Translate using Google Translate with auto source detection"""
         try:
             from googletrans import Translator
             translator = Translator()
+            # Auto-detect source language by not specifying src
             result = translator.translate(text, dest=target_lang)
             return result.text
         except Exception as e:
             return f"Google Translate Error: {str(e)}"
     
     def _translate_ollama(self, text, target_lang):
-        """Translate using Ollama (offline)"""
+        """Translate using Ollama with auto source detection"""
         url = self.config.get('ollama_url', 'http://localhost:11434')
         model = self.config.get('ollama_model', 'gemma')
         
@@ -72,12 +73,23 @@ class TranslationEngine:
             'zh': 'Chinese',
             'ar': 'Arabic',
             'hi': 'Hindi',
+            'vi': 'Vietnamese',
+            'th': 'Thai',
         }
         
         lang_name = lang_names.get(target_lang, target_lang)
         
         try:
-            prompt = f"Translate the following text to {lang_name}. Return only the translation, no explanations or additional text:\n\n{text}"
+            # Improved prompt that auto-detects source language
+            prompt = f"""Translate the following text to {lang_name}. 
+Automatically detect the source language.
+Return ONLY the translation, without any explanations, notes, or the original text.
+If the text is already in {lang_name}, return it unchanged.
+
+Text to translate:
+{text}
+
+Translation:"""
             
             response = requests.post(
                 f"{url}/api/generate",
@@ -95,6 +107,17 @@ class TranslationEngine:
             if response.status_code == 200:
                 result = response.json()
                 translation = result.get('response', '').strip()
+                
+                # Clean up common LLM artifacts
+                # Remove "Translation:" prefix if present
+                if translation.lower().startswith('translation:'):
+                    translation = translation[12:].strip()
+                
+                # Remove quotes if the entire response is quoted
+                if (translation.startswith('"') and translation.endswith('"')) or \
+                   (translation.startswith("'") and translation.endswith("'")):
+                    translation = translation[1:-1]
+                
                 return translation
             elif response.status_code == 404:
                 # Model not found - try to provide helpful error
